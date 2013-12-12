@@ -17,7 +17,7 @@
     </parent>
 
     <properties>
-        <air.check.skip-extended>true</air.check.skip-extended>
+        <air.check.skip-all>true</air.check.skip-all>
     </properties>
 
     <dependencies>
