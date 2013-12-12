@@ -1,13 +1,11 @@
 package com.facebook.presto.truffle;
 
-import io.airlift.slice.Slice;
-
 public class Page
 {
     private final int rowCount;
-    private final Slice[] columns;
+    private final Object[] columns;
 
-    public Page(int rowCount, Slice... columns)
+    public Page(int rowCount, Object... columns)
     {
         this.rowCount = rowCount;
         this.columns = columns;
@@ -18,12 +16,12 @@ public class Page
         return rowCount;
     }
 
-    public Slice getColumn(int column)
+    public Object getColumn(int column)
     {
         return columns[column];
     }
 
-    public Slice[] getColumns()
+    public Object[] getColumns()
     {
         return columns;
     }

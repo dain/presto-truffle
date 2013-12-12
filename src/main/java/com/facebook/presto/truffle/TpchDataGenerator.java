@@ -2,12 +2,7 @@ package com.facebook.presto.truffle;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
-import io.airlift.slice.SizeOf;
-import io.airlift.slice.Slice;
-import io.airlift.slice.SliceOutput;
-import io.airlift.slice.Slices;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Random;
 
@@ -61,17 +56,10 @@ public class TpchDataGenerator
 
     public Page generateLineItemsPage(int rowCount)
     {
-        Slice extendedPriceSlice = Slices.allocate(rowCount * SizeOf.SIZE_OF_DOUBLE);
-        SliceOutput extendedPriceOutput = extendedPriceSlice.getOutput();
-
-        Slice discountSlice = Slices.allocate(rowCount * SizeOf.SIZE_OF_DOUBLE);
-        SliceOutput discountOutput = discountSlice.getOutput();
-
-        Slice quantitySlice = Slices.allocate(rowCount * SizeOf.SIZE_OF_LONG);
-        SliceOutput quantityOutput = quantitySlice.getOutput();
-
-        Slice shipDateSlice = Slices.allocate(rowCount * (DATE_STRING_LENGTH));
-        SliceOutput shipDateOutput = shipDateSlice.getOutput();
+        double[] extendedPriceColumn = new double[rowCount];
+        double[] discountColumn = new double[rowCount];
+        long[] quantityColumn = new long[rowCount];
+        String[] shipDateColumn = new String[rowCount];
 
         for (int row = 0; row < rowCount; row++) {
             int quantity = randomInt(L_QTY_MIN, L_QTY_MAX);
@@ -86,14 +74,14 @@ public class TpchDataGenerator
             int shipDate = randomInt(L_SDTE_MIN, L_SDTE_MAX);
             shipDate += orderDate;
 
-            extendedPriceOutput.appendDouble(extendedPrice);
-            discountOutput.appendDouble(discount);
-            quantityOutput.appendLong(quantity);
+            extendedPriceColumn[row] = extendedPrice;
+            discountColumn[row] = discount;
+            quantityColumn[row] = quantity;
 
-            shipDateOutput.appendBytes(toDateString(shipDate).getBytes(StandardCharsets.UTF_8));
+            shipDateColumn[row] = toDateString(shipDate);
         }
 
-        return new Page(rowCount, extendedPriceSlice, discountSlice, shipDateSlice, quantitySlice);
+        return new Page(rowCount, extendedPriceColumn, discountColumn, shipDateColumn, quantityColumn);
     }
 
     public int randomInt(int low, int high)

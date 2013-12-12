@@ -1,20 +1,14 @@
 package com.facebook.presto.truffle;
 
-import io.airlift.slice.SizeOf;
-import io.airlift.slice.Slice;
-import io.airlift.slice.Slices;
-
-import static com.facebook.presto.truffle.TpchDataGenerator.DATE_STRING_LENGTH;
 import static com.facebook.presto.truffle.TpchDataGenerator.DISCOUNT;
 import static com.facebook.presto.truffle.TpchDataGenerator.PRICE;
 import static com.facebook.presto.truffle.TpchDataGenerator.QUANTITY;
 import static com.facebook.presto.truffle.TpchDataGenerator.SHIP_DATE;
-import static com.google.common.base.Charsets.UTF_8;
 
 public class TpchQuery6
 {
-    private static final Slice MIN_SHIP_DATE = Slices.copiedBuffer("1994-01-01", UTF_8);
-    private static final Slice MAX_SHIP_DATE = Slices.copiedBuffer("1995-01-01", UTF_8);
+    private static final String MIN_SHIP_DATE = "1994-01-01";
+    private static final String MAX_SHIP_DATE = "1995-01-01";
 
     public static double executeTpchQuery6(Iterable<Page> pages)
     {
@@ -22,14 +16,14 @@ public class TpchQuery6
         long processedRows = 0;
 
         for (Page page : pages) {
-            Slice price = page.getColumn(PRICE);
-            Slice discount = page.getColumn(DISCOUNT);
-            Slice shipDate = page.getColumn(SHIP_DATE);
-            Slice quantity = page.getColumn(QUANTITY);
+            double[] extendedPrice = (double[]) page.getColumn(PRICE);
+            double[] discount = (double[]) page.getColumn(DISCOUNT);
+            String[] shipDate = (String[]) page.getColumn(SHIP_DATE);
+            long[] quantity = (long[]) page.getColumn(QUANTITY);
 
             for (int row = 0; row < page.getRowCount(); row++) {
                 if (filter(row, discount, shipDate, quantity)) {
-                    sum += (getDouble(price, row) * getDouble(discount, row));
+                    sum += (getDouble(extendedPrice, row) * getDouble(discount, row));
                     processedRows++;
                 }
             }
@@ -40,7 +34,7 @@ public class TpchQuery6
         return sum;
     }
 
-    private static boolean filter(int row, Slice discount, Slice shipDate, Slice quantity)
+    private static boolean filter(int row, double[] discount, String[] shipDate, long[] quantity)
     {
         return getDate(shipDate, row).compareTo(MIN_SHIP_DATE) >= 0 &&
                 getDate(shipDate, row).compareTo(MAX_SHIP_DATE) < 0 &&
@@ -49,18 +43,18 @@ public class TpchQuery6
                 getLong(quantity, row) < 24;
     }
 
-    private static double getDouble(Slice slice, int row)
+    private static double getDouble(double[] slice, int row)
     {
-        return slice.getDouble(row * SizeOf.SIZE_OF_DOUBLE);
+        return slice[row];
     }
 
-    private static long getLong(Slice slice, int row)
+    private static long getLong(long[] slice, int row)
     {
-        return slice.getLong(row * SizeOf.SIZE_OF_DOUBLE);
+        return slice[row];
     }
 
-    private static Slice getDate(Slice slice, int row)
+    private static String getDate(String[] slice, int row)
     {
-        return slice.slice(row * DATE_STRING_LENGTH, DATE_STRING_LENGTH);
+        return slice[row];
     }
 }
