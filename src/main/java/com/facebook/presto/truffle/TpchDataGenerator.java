@@ -3,13 +3,13 @@ package com.facebook.presto.truffle;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import io.airlift.slice.SizeOf;
-import io.airlift.slice.Slice;
-import io.airlift.slice.SliceOutput;
-import io.airlift.slice.Slices;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Random;
+
+import static com.facebook.presto.truffle.UnsafeUtil.unsafe;
+import static sun.misc.Unsafe.ARRAY_BYTE_BASE_OFFSET;
 
 public class TpchDataGenerator
 {
@@ -61,17 +61,10 @@ public class TpchDataGenerator
 
     public Page generateLineItemsPage(int rowCount)
     {
-        Slice extendedPriceSlice = Slices.allocate(rowCount * SizeOf.SIZE_OF_DOUBLE);
-        SliceOutput extendedPriceOutput = extendedPriceSlice.getOutput();
-
-        Slice discountSlice = Slices.allocate(rowCount * SizeOf.SIZE_OF_DOUBLE);
-        SliceOutput discountOutput = discountSlice.getOutput();
-
-        Slice quantitySlice = Slices.allocate(rowCount * SizeOf.SIZE_OF_LONG);
-        SliceOutput quantityOutput = quantitySlice.getOutput();
-
-        Slice shipDateSlice = Slices.allocate(rowCount * (DATE_STRING_LENGTH));
-        SliceOutput shipDateOutput = shipDateSlice.getOutput();
+        byte[] extendedPriceColumn =new byte[rowCount * SizeOf.SIZE_OF_DOUBLE];
+        byte[] discountColumn = new byte[rowCount * SizeOf.SIZE_OF_DOUBLE];
+        byte[] quantityColumn = new byte[rowCount * SizeOf.SIZE_OF_LONG];
+        byte[] shipDateColumn = new byte[rowCount * DATE_STRING_LENGTH];
 
         for (int row = 0; row < rowCount; row++) {
             int quantity = randomInt(L_QTY_MIN, L_QTY_MAX);
@@ -86,14 +79,19 @@ public class TpchDataGenerator
             int shipDate = randomInt(L_SDTE_MIN, L_SDTE_MAX);
             shipDate += orderDate;
 
-            extendedPriceOutput.appendDouble(extendedPrice);
-            discountOutput.appendDouble(discount);
-            quantityOutput.appendLong(quantity);
+            unsafe.putDouble(extendedPriceColumn, (long) ARRAY_BYTE_BASE_OFFSET + (SizeOf.SIZE_OF_DOUBLE * row), extendedPrice);
+            unsafe.putDouble(discountColumn, (long) ARRAY_BYTE_BASE_OFFSET + (SizeOf.SIZE_OF_DOUBLE * row), discount);
+            unsafe.putLong(quantityColumn, (long) ARRAY_BYTE_BASE_OFFSET + (SizeOf.SIZE_OF_DOUBLE * row), quantity);
 
-            shipDateOutput.appendBytes(toDateString(shipDate).getBytes(StandardCharsets.UTF_8));
+            unsafe.copyMemory(
+                    toDateString(shipDate).getBytes(StandardCharsets.UTF_8),
+                    (long) ARRAY_BYTE_BASE_OFFSET,
+                    shipDateColumn,
+                    (long) ARRAY_BYTE_BASE_OFFSET + (DATE_STRING_LENGTH * row),
+                    DATE_STRING_LENGTH);
         }
 
-        return new Page(rowCount, extendedPriceSlice, discountSlice, shipDateSlice, quantitySlice);
+        return new Page(rowCount, extendedPriceColumn, discountColumn, shipDateColumn, quantityColumn);
     }
 
     public int randomInt(int low, int high)
