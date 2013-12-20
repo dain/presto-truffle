@@ -56,7 +56,7 @@ public class TruffleTest
 			        	new ConjunctionNode(
 			        		new GreaterEqualsNode(new CellGetDoubleNode(discountSlot, rowSlot), new DoubleConstantNode(0.05)),
 			        		new ConjunctionNode(
-			        			new LessThanNode(new CellGetDoubleNode(discountSlot, rowSlot), new DoubleConstantNode(0.07)),
+			        			new GreaterEqualsNode(new DoubleConstantNode(0.07), new CellGetDoubleNode(discountSlot, rowSlot)),
 			        			new LessThanNode(new CellGetLongNode(quantitySlot, rowSlot), new LongConstantNode(24L))
 			        		)
 			        	)
@@ -67,7 +67,7 @@ public class TruffleTest
 		CallTarget call = runtime.createCallTarget(new ReduceQueryNode(sumNode, filterNode, mapping, rowSlot), desc);
 
         double sum = 0;
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < 2; i++) {
             long start = System.nanoTime();
 
             for (Page page: pages) {
@@ -157,9 +157,7 @@ public class TruffleTest
 
 		@Override
 		public Object apply(Object oldValue, Object newValue) {
-			Double oldDouble = (Double) oldValue;
-			Double newDouble = (Double) newValue;
-			return oldDouble + newDouble;
+			return (Double) oldValue + (Double) newValue;
 		}
     }
     
@@ -196,7 +194,6 @@ public class TruffleTest
     }
     
     public static class LessThanNode extends BinaryNode {
-
 		public LessThanNode(ExpressionNode left, ExpressionNode right) {
 			super(left, right);
 		}
