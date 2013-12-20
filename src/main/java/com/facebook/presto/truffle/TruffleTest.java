@@ -8,6 +8,7 @@ import static com.facebook.presto.truffle.TpchDataGenerator.SHIP_DATE;
 import static com.facebook.presto.truffle.TpchDataGenerator.generateTestData;
 import io.airlift.slice.SizeOf;
 import io.airlift.slice.Slice;
+import io.airlift.slice.Slices;
 
 import java.lang.reflect.Field;
 import java.util.List;
@@ -16,6 +17,7 @@ import sun.misc.Unsafe;
 
 import com.oracle.truffle.api.Arguments;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.SlowPath;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
@@ -280,6 +282,10 @@ public class TruffleTest {
 				return null;
 			}
 		}
+		
+		protected FrameSlot getSliceSlot() {
+			return sliceSlot;
+		}
 	}
 	
 	private static Object getSliceBase(Slice slice) {
@@ -300,7 +306,7 @@ public class TruffleTest {
 			Slice slice = getSlice(frame);
 			int index = getRow(frame) * SizeOf.SIZE_OF_LONG;
 			// TODO: check indexes, make parts of it a slow path
-			return unsafe.getLong(getSliceBase(slice), getSliceAddress(slice) + index);
+			return CompilerDirectives.unsafeGetLong(getSliceBase(slice), getSliceAddress(slice) + index, true, getSliceSlot());
 		}
 		
 		@Override
@@ -319,7 +325,7 @@ public class TruffleTest {
 			Slice slice = getSlice(frame);
 			int index = getRow(frame) * SizeOf.SIZE_OF_LONG;
 			// TODO: check indexes, make parts of it a slow path
-			return unsafe.getDouble(getSliceBase(slice), getSliceAddress(slice) + index);
+			return CompilerDirectives.unsafeGetDouble(getSliceBase(slice), getSliceAddress(slice) + index, true, getSliceSlot());
 		}
 
 		@Override
