@@ -26,18 +26,24 @@ public class TpchQuery6
         double sum = 0;
         long processedRows = 0;
 
+        int pagenr = 0;
         for (Page page : pages) {
+        	System.out.printf("page nr: %d\n", pagenr++);
             Slice price = page.getColumn(PRICE);
             Slice discount = page.getColumn(DISCOUNT);
             Slice shipDate = page.getColumn(SHIP_DATE);
             Slice quantity = page.getColumn(QUANTITY);
 
+            double pageSum = 0.0;
             for (int row = 0; row < page.getRowCount(); row++) {
                 if (filter(row, discount, shipDate, quantity)) {
-                    sum += (getDouble(price, row) * getDouble(discount, row));
+                	pageSum += (getDouble(price, row) * getDouble(discount, row));
+                	System.out.printf("\trow %d: %f\n", row, pageSum);
                     processedRows++;
                 }
             }
+            sum += pageSum;
+            System.out.printf("partial sum: %f\n", sum);
         }
 
         // System.out.println(sum + " " + processedRows);
@@ -55,6 +61,7 @@ public class TpchQuery6
     }
     
     // 2.0632824238740677E8
+    // 2.0632824238740027E8
 
     private static double getDouble(Slice slice, int row)
     {
@@ -63,7 +70,7 @@ public class TpchQuery6
 
     private static long getLong(Slice slice, int row)
     {
-        return slice.getLong(row * SizeOf.SIZE_OF_DOUBLE);
+        return slice.getLong(row * SizeOf.SIZE_OF_LONG);
     }
 
     private static Slice getDate(Slice slice, int row)
