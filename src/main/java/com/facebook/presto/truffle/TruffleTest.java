@@ -1,14 +1,11 @@
 package com.facebook.presto.truffle;
 
-import static com.facebook.presto.truffle.TpchDataGenerator.PRICE;
-
 import static com.facebook.presto.truffle.TpchDataGenerator.DATE_STRING_LENGTH;
 import static com.facebook.presto.truffle.TpchDataGenerator.DISCOUNT;
 import static com.facebook.presto.truffle.TpchDataGenerator.PRICE;
 import static com.facebook.presto.truffle.TpchDataGenerator.QUANTITY;
 import static com.facebook.presto.truffle.TpchDataGenerator.SHIP_DATE;
 import static com.facebook.presto.truffle.TpchDataGenerator.generateTestData;
-
 import io.airlift.slice.Slice;
 
 import java.util.List;
@@ -35,20 +32,35 @@ public class TruffleTest
         FrameDescriptor desc = new FrameDescriptor();
 
         FrameSlot rowSlot = desc.addFrameSlot("row", FrameSlotKind.Int);
-        FrameMapping[] mapping = new FrameMapping[] {
-        		new FrameMapping(PRICE, desc.addFrameSlot("PRICE", FrameSlotKind.Object)),
-        		new FrameMapping(DISCOUNT, desc.addFrameSlot("DISCOUNT", FrameSlotKind.Object)),
-        		new FrameMapping(SHIP_DATE, desc.addFrameSlot("SHIP_DATE", FrameSlotKind.Object)),
-        		new FrameMapping(QUANTITY, desc.addFrameSlot("QUANTITY", FrameSlotKind.Object)),
+        FrameSlot priceSlot = desc.addFrameSlot("PRICE", FrameSlotKind.Object);
+		FrameSlot discountSlot = desc.addFrameSlot("DISCOUNT", FrameSlotKind.Object);
+		FrameSlot shipDateSlot = desc.addFrameSlot("SHIP_DATE", FrameSlotKind.Object);
+		FrameSlot quantitySlot = desc.addFrameSlot("QUANTITY", FrameSlotKind.Object);
+		FrameMapping[] mapping = new FrameMapping[] {
+        		new FrameMapping(PRICE, priceSlot),
+        		new FrameMapping(DISCOUNT, discountSlot),
+        		new FrameMapping(SHIP_DATE, shipDateSlot),
+        		new FrameMapping(QUANTITY, quantitySlot),
         		};
 
         ExpressionNode expressionNode = new MulNode(
-        		new CellGetDoubleNode(mapping[0].getFrameSlot(), rowSlot),
-        		new CellGetDoubleNode(mapping[1].getFrameSlot(), rowSlot));
+        		new CellGetDoubleNode(priceSlot, rowSlot),
+        		new CellGetDoubleNode(discountSlot, rowSlot));
         SumNode sumNode = new SumNode(desc.addFrameSlot("sum", FrameSlotKind.Object), expressionNode);
         
-        ExpressionNode filterNode = null;
-        
+        ExpressionNode filterNode = new ConjunctionNode(
+	        		new GreaterEqualsNode(new CellGetSliceNode(shipDateSlot, rowSlot, DATE_STRING_LENGTH), new SliceConstantNode(TpchQuery6.MIN_SHIP_DATE)),
+	        		new ConjunctionNode(
+		        		new LessThanNode(new CellGetSliceNode(shipDateSlot, rowSlot, DATE_STRING_LENGTH), new SliceConstantNode(TpchQuery6.MAX_SHIP_DATE)),
+			        	new ConjunctionNode(
+			        		new GreaterEqualsNode(new CellGetDoubleNode(discountSlot, rowSlot), new DoubleConstantNode(0.05)),
+			        		new ConjunctionNode(
+			        			new LessThanNode(new CellGetDoubleNode(discountSlot, rowSlot), new DoubleConstantNode(0.07)),
+			        			new LessThanNode(new CellGetLongNode(quantitySlot, rowSlot), new LongConstantNode(24L))
+			        		)
+			        	)
+	        		)
+        	);
         
 
 		CallTarget call = runtime.createCallTarget(new ReduceQueryNode(sumNode, filterNode, mapping, rowSlot));
@@ -57,8 +69,9 @@ public class TruffleTest
         for (int i = 0; i < 1000; i++) {
             long start = System.nanoTime();
 
-            // TODO: pass arguments
-            sum += (double) call.call();
+            for (Page page: pages) {
+	            sum += (double) call.call(new PageArguments(page));
+            }
             long duration = System.nanoTime() - start;
             System.out.printf("%6.2fms\n", duration / 1e6);
         }
@@ -152,18 +165,90 @@ public class TruffleTest
     	public abstract Object execute(VirtualFrame frame);
     }
     
-    public static class MulNode extends ExpressionNode {
-    	@Child final private ExpressionNode left;
-		@Child final private ExpressionNode right;
+    public static abstract class BinaryNode extends ExpressionNode {
+    	@Child final protected ExpressionNode left;
+		@Child final protected ExpressionNode right;
 
-		public MulNode(ExpressionNode left, ExpressionNode right) {
+		public BinaryNode(ExpressionNode left, ExpressionNode right) {
 			this.left = adoptChild(left);
 			this.right = adoptChild(right);
     	}
+		
+		public abstract Object executeOperation(Object left, Object right);
 
 		@Override
 		public Object execute(VirtualFrame frame) {
-			return (Double) left.execute(frame) * (Double) right.execute(frame);
+			return executeOperation(left.execute(frame), right.execute(frame));
+		}
+    }
+
+    public static class MulNode extends BinaryNode {
+		public MulNode(ExpressionNode left, ExpressionNode right) {
+			super(left, right);
+		}
+
+		@Override
+		public Object executeOperation(Object left, Object right) {
+			return (Double) left * (Double) right;
+		}
+    }
+    
+    public static class LessThanNode extends BinaryNode {
+
+		public LessThanNode(ExpressionNode left, ExpressionNode right) {
+			super(left, right);
+		}
+
+		@Override
+		public Object executeOperation(Object left, Object right) {
+			if (left instanceof Long && right instanceof Long) {
+				return (Long) left < (Long) right;
+			}
+			if (left instanceof Double && right instanceof Double) {
+				return (Double) left < (Double) right;
+			}
+			if (left instanceof Slice && right instanceof Slice) {
+				return ((Slice) left).compareTo((Slice) right) < 0;
+			}
+			System.err.printf("LessThanNode: wrong type\n");
+			return false;
+		}
+    }
+
+    public static class GreaterEqualsNode extends BinaryNode {
+		public GreaterEqualsNode(ExpressionNode left, ExpressionNode right) {
+			super(left, right);
+		}
+
+		@Override
+		public Object executeOperation(Object left, Object right) {
+			if (left instanceof Long && right instanceof Long) {
+				return (Long) left >= (Long) right;
+			}
+			if (left instanceof Double && right instanceof Double) {
+				return (Double) left >= (Double) right;
+			}
+			if (left instanceof Slice && right instanceof Slice) {
+				return ((Slice) left).compareTo((Slice) right) >= 0;
+			}
+			System.err.printf("GreaterEqualsNod3: wrong type\n");
+			return false;
+		}
+    }
+    
+    public static class ConjunctionNode extends BinaryNode {
+		public ConjunctionNode(ExpressionNode left, ExpressionNode right) {
+			super(left, right);
+		}
+
+		@Override
+		public Object execute(VirtualFrame frame) {
+			return (Boolean) left.execute(frame) && (Boolean) right.execute(frame);
+		}
+
+		@Override
+		public Object executeOperation(Object left, Object right) {
+			throw new IllegalStateException();
 		}
     }
     
@@ -228,6 +313,49 @@ public class TruffleTest
 		@Override
 		public Object execute(VirtualFrame frame) {
 			return getSlice(frame).slice(getRow(frame) * length, length);
+		}
+    }
+    
+    
+    public static class LongConstantNode extends ExpressionNode {
+    	private final Long constant;
+    	
+
+		public LongConstantNode(Long constant) {
+			this.constant = constant;
+		}
+    	
+		@Override
+		public Object execute(VirtualFrame frame) {
+			return constant;
+		}
+    }
+
+    public static class DoubleConstantNode extends ExpressionNode {
+    	private final Double constant;
+    	
+
+		public DoubleConstantNode(Double constant) {
+			this.constant = constant;
+		}
+    	
+		@Override
+		public Object execute(VirtualFrame frame) {
+			return constant;
+		}
+    }
+
+    public static class SliceConstantNode extends ExpressionNode {
+    	private final Slice constant;
+    	
+
+		public SliceConstantNode(Slice constant) {
+			this.constant = constant;
+		}
+    	
+		@Override
+		public Object execute(VirtualFrame frame) {
+			return constant;
 		}
     }
 
