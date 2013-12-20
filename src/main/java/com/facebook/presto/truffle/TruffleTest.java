@@ -9,7 +9,10 @@ import static com.facebook.presto.truffle.TpchDataGenerator.generateTestData;
 import io.airlift.slice.SizeOf;
 import io.airlift.slice.Slice;
 
+import java.lang.reflect.Field;
 import java.util.List;
+
+import sun.misc.Unsafe;
 
 import com.oracle.truffle.api.Arguments;
 import com.oracle.truffle.api.CallTarget;
@@ -31,7 +34,28 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 public class TruffleTest {
+	private static Unsafe unsafe = null;
+	private static long baseOffset = -1;
+	private static long addressOffset = -1;
+
 	public static void main(String[] args) {
+	    // fetch theUnsafe object
+        Field field;
+		try {
+			field = Unsafe.class.getDeclaredField("theUnsafe");
+            field.setAccessible(true);
+            unsafe = (Unsafe) field.get(null);
+            if (unsafe == null) {
+                throw new RuntimeException("Unsafe access not available");
+            }
+            
+            baseOffset = unsafe.objectFieldOffset(Slice.class.getDeclaredField("base"));
+            addressOffset = unsafe.objectFieldOffset(Slice.class.getDeclaredField("address"));
+		} catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
 		List<Page> pages = generateTestData();
 		TruffleRuntime runtime = Truffle.getRuntime();
 		FrameDescriptor desc = new FrameDescriptor();
@@ -257,6 +281,14 @@ public class TruffleTest {
 			}
 		}
 	}
+	
+	private static Object getSliceBase(Slice slice) {
+		return unsafe.getObject(slice, baseOffset);
+	}
+	
+	private static long getSliceAddress(Slice slice) {
+		return unsafe.getLong(slice, addressOffset);
+	}
 
 	public static class CellGetLongNode extends CellGetNode {
 		public CellGetLongNode(FrameSlot sliceSlot, FrameSlot rowSlot) {
@@ -265,9 +297,12 @@ public class TruffleTest {
 
 		@Override
 		public long executeLong(VirtualFrame frame) {
-			return getSlice(frame).getLong(getRow(frame) * SizeOf.SIZE_OF_LONG);
+			Slice slice = getSlice(frame);
+			int index = getRow(frame) * SizeOf.SIZE_OF_LONG;
+			// TODO: check indexes, make parts of it a slow path
+			return unsafe.getLong(getSliceBase(slice), getSliceAddress(slice) + index);
 		}
-
+		
 		@Override
 		public Object executeGeneric(VirtualFrame frame) {
 			return executeLong(frame);
@@ -281,8 +316,10 @@ public class TruffleTest {
 
 		@Override
 		public double executeDouble(VirtualFrame frame) {
-			return getSlice(frame).getDouble(
-					getRow(frame) * SizeOf.SIZE_OF_DOUBLE);
+			Slice slice = getSlice(frame);
+			int index = getRow(frame) * SizeOf.SIZE_OF_LONG;
+			// TODO: check indexes, make parts of it a slow path
+			return unsafe.getDouble(getSliceBase(slice), getSliceAddress(slice) + index);
 		}
 
 		@Override
