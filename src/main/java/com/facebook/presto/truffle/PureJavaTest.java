@@ -12,7 +12,7 @@ public class PureJavaTest
         List<Page> pages = generateTestData();
 
         double sum = 0;
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < 20; i++) {
             long start = System.nanoTime();
             sum += executeTpchQuery6(pages);
             long duration = System.nanoTime() - start;
