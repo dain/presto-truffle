@@ -64,12 +64,9 @@ public class TruffleTest {
 
 		FrameSlot rowSlot = desc.addFrameSlot("row", FrameSlotKind.Int);
 		FrameSlot priceSlot = desc.addFrameSlot("PRICE", FrameSlotKind.Object);
-		FrameSlot discountSlot = desc.addFrameSlot("DISCOUNT",
-				FrameSlotKind.Object);
-		FrameSlot shipDateSlot = desc.addFrameSlot("SHIP_DATE",
-				FrameSlotKind.Object);
-		FrameSlot quantitySlot = desc.addFrameSlot("QUANTITY",
-				FrameSlotKind.Object);
+		FrameSlot discountSlot = desc.addFrameSlot("DISCOUNT", FrameSlotKind.Object);
+		FrameSlot shipDateSlot = desc.addFrameSlot("SHIP_DATE", FrameSlotKind.Object);
+		FrameSlot quantitySlot = desc.addFrameSlot("QUANTITY", FrameSlotKind.Object);
 		FrameMapping[] mapping = new FrameMapping[] {
 				new FrameMapping(PRICE, priceSlot),
 				new FrameMapping(DISCOUNT, discountSlot),
@@ -80,23 +77,26 @@ public class TruffleTest {
 				new CellGetDoubleNode(priceSlot, rowSlot),
 				new CellGetDoubleNode(discountSlot, rowSlot));
 
-		DoubleSumNode sumNode = new DoubleSumNode(desc.addFrameSlot("sum",
-				FrameSlotKind.Double), expressionNode);
+		DoubleSumNode sumNode = new DoubleSumNode(desc.addFrameSlot("sum", FrameSlotKind.Double), expressionNode);
 
 		ExpressionNode filterNode = TruffleTestFactory.ConjunctionNodeFactory.create(
 				TruffleTestFactory.GreaterEqualsNodeFactory.create(
-						new CellGetSliceNode(shipDateSlot, rowSlot, DATE_STRING_LENGTH),
-						new SliceConstantNode(TpchQuery6.MIN_SHIP_DATE)),
+					new CellGetSliceNode(shipDateSlot, rowSlot, DATE_STRING_LENGTH),
+					new SliceConstantNode(TpchQuery6.MIN_SHIP_DATE)),
 				TruffleTestFactory.ConjunctionNodeFactory.create(
-						TruffleTestFactory.LessThanNodeFactory.create(
-								new CellGetSliceNode(shipDateSlot, rowSlot, DATE_STRING_LENGTH),
-								new SliceConstantNode(TpchQuery6.MAX_SHIP_DATE)),
-								TruffleTestFactory.ConjunctionNodeFactory.create(
-									TruffleTestFactory.GreaterEqualsNodeFactory.create(new CellGetDoubleNode(discountSlot, rowSlot), new DoubleConstantNode(0.05)),
-									TruffleTestFactory.ConjunctionNodeFactory.create(TruffleTestFactory.GreaterEqualsNodeFactory.create(
-										new DoubleConstantNode(0.07), new CellGetDoubleNode(discountSlot, rowSlot)),
-										TruffleTestFactory.LessThanNodeFactory.create(
-										new CellGetLongNode(quantitySlot, rowSlot), new LongConstantNode( 24L))))));
+					TruffleTestFactory.LessThanNodeFactory.create(
+						new CellGetSliceNode(shipDateSlot, rowSlot, DATE_STRING_LENGTH),
+						new SliceConstantNode(TpchQuery6.MAX_SHIP_DATE)),
+						TruffleTestFactory.ConjunctionNodeFactory.create(
+							TruffleTestFactory.GreaterEqualsNodeFactory.create(
+								new CellGetDoubleNode(discountSlot, rowSlot),
+								new DoubleConstantNode(0.05)),
+							TruffleTestFactory.ConjunctionNodeFactory.create(TruffleTestFactory.GreaterEqualsNodeFactory.create(
+								new DoubleConstantNode(0.07),
+								new CellGetDoubleNode(discountSlot, rowSlot)),
+								TruffleTestFactory.LessThanNodeFactory.create(
+									new CellGetLongNode(quantitySlot, rowSlot),
+									new LongConstantNode( 24L))))));
 
 		CallTarget call = runtime.createCallTarget(new ReduceQueryNode(sumNode,	filterNode, mapping, rowSlot), desc);
 
@@ -117,8 +117,7 @@ public class TruffleTest {
 
 	public abstract static class DoubleReduceNode extends PrestoNode {
 		private final FrameSlot slot;
-		@Child
-		private final ExpressionNode expressionNode;
+		@Child private final ExpressionNode expressionNode;
 
 		public DoubleReduceNode(FrameSlot slot, ExpressionNode expressionNode) {
 			this.slot = slot;
@@ -166,27 +165,20 @@ public class TruffleTest {
 	}
 
 	public static abstract class ExpressionNode extends PrestoNode {
-		public boolean executeBoolean(VirtualFrame frame)
-				throws UnexpectedResultException {
-			return PrestoTypesGen.PRESTOTYPES
-					.expectBoolean(executeGeneric(frame));
+		public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
+			return PrestoTypesGen.PRESTOTYPES .expectBoolean(executeGeneric(frame));
 		}
 
-		public long executeLong(VirtualFrame frame)
-				throws UnexpectedResultException {
+		public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
 			return PrestoTypesGen.PRESTOTYPES.expectLong(executeGeneric(frame));
 		}
 
-		public double executeDouble(VirtualFrame frame)
-				throws UnexpectedResultException {
-			return PrestoTypesGen.PRESTOTYPES
-					.expectDouble(executeGeneric(frame));
+		public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
+			return PrestoTypesGen.PRESTOTYPES .expectDouble(executeGeneric(frame));
 		}
 
-		public Slice executeSlice(VirtualFrame frame)
-				throws UnexpectedResultException {
-			return PrestoTypesGen.PRESTOTYPES
-					.expectSlice(executeGeneric(frame));
+		public Slice executeSlice(VirtualFrame frame) throws UnexpectedResultException {
+			return PrestoTypesGen.PRESTOTYPES .expectSlice(executeGeneric(frame));
 		}
 
 		public abstract Object executeGeneric(VirtualFrame frame);
@@ -432,7 +424,6 @@ public class TruffleTest {
 	}
 
 	public static final class PageArguments extends Arguments {
-
 		public final Page argument;
 
 		public PageArguments(Page argument) {
