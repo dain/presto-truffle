@@ -13,8 +13,8 @@ import static com.google.common.base.Charsets.UTF_8;
 
 public class TpchQuery6
 {
-    private static final Slice MIN_SHIP_DATE = Slices.copiedBuffer("1994-01-01", UTF_8);
-    private static final Slice MAX_SHIP_DATE = Slices.copiedBuffer("1995-01-01", UTF_8);
+    public static final Slice MIN_SHIP_DATE = Slices.copiedBuffer("1994-01-01", UTF_8);
+    public static final Slice MAX_SHIP_DATE = Slices.copiedBuffer("1995-01-01", UTF_8);
 
     /*
      * select sum(price * discount) from pages where shipDate >= cst1 and shipDate < cst2 and discount >= 0.05 and discount <= 0.07 and quantity < 24
