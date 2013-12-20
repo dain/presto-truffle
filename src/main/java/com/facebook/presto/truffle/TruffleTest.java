@@ -6,6 +6,7 @@ import static com.facebook.presto.truffle.TpchDataGenerator.PRICE;
 import static com.facebook.presto.truffle.TpchDataGenerator.QUANTITY;
 import static com.facebook.presto.truffle.TpchDataGenerator.SHIP_DATE;
 import static com.facebook.presto.truffle.TpchDataGenerator.generateTestData;
+import io.airlift.slice.SizeOf;
 import io.airlift.slice.Slice;
 
 import java.util.List;
@@ -68,11 +69,16 @@ public class TruffleTest
 
         double sum = 0;
         for (int i = 0; i < 2; i++) {
+        	double pagesSum = 0;
             long start = System.nanoTime();
 
+            int pagenr = 0;
             for (Page page: pages) {
-	            sum += (double) call.call(new PageArguments(page));
+            	System.out.printf("pagenr: %d\n", pagenr++);
+	            pagesSum += (double) call.call(new PageArguments(page));
+	            System.out.printf("partial sum: %f\n", sum);
             }
+            sum += pagesSum;
             long duration = System.nanoTime() - start;
             System.out.printf("%6.2fms\n", duration / 1e6);
         }
@@ -104,6 +110,12 @@ public class TruffleTest
 				frame.setInt(rowSlot, row);
 				if((Boolean) filterNode.execute(frame)) {
 					reduceNode.execute(frame);
+					try {
+						System.out.printf("\trow %d: %f\n", row, frame.getObject(reduceNode.getSlot()));
+					} catch (FrameSlotTypeException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 				}
 			}
 			
@@ -288,7 +300,7 @@ public class TruffleTest
 
 		@Override
 		public Object execute(VirtualFrame frame) {
-			return getSlice(frame).getLong(getRow(frame));
+			return getSlice(frame).getLong(getRow(frame) * SizeOf.SIZE_OF_LONG);
 		}
     }
     public static class CellGetDoubleNode extends CellGetNode {
@@ -298,7 +310,7 @@ public class TruffleTest
 
 		@Override
 		public Object execute(VirtualFrame frame) {
-			return getSlice(frame).getDouble(getRow(frame));
+			return getSlice(frame).getDouble(getRow(frame) * SizeOf.SIZE_OF_DOUBLE);
 		}
     }
     public static class CellGetSliceNode extends CellGetNode {
