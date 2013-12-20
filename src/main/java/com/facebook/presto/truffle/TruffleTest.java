@@ -14,6 +14,7 @@ import com.oracle.truffle.api.Arguments;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.CompilerDirectives.SlowPath;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -63,7 +64,7 @@ public class TruffleTest
         	);
         
 
-		CallTarget call = runtime.createCallTarget(new ReduceQueryNode(sumNode, filterNode, mapping, rowSlot));
+		CallTarget call = runtime.createCallTarget(new ReduceQueryNode(sumNode, filterNode, mapping, rowSlot), desc);
 
         double sum = 0;
         for (int i = 0; i < 1000; i++) {
@@ -97,7 +98,8 @@ public class TruffleTest
         public Object execute(VirtualFrame frame)
         {
 			Page page = PageArguments.get(frame);
-			setFrame(frame, page);
+			initFrame(frame, page);
+			
 			for (int row = 0; row < page.getRowCount(); row++) {
 				frame.setInt(rowSlot, row);
 				if((Boolean) filterNode.execute(frame)) {
@@ -115,12 +117,12 @@ public class TruffleTest
         }
 
 		@ExplodeLoop
-		private void setFrame(VirtualFrame frame, Page page) {
+		private void initFrame(VirtualFrame frame, Page page) {
             for (FrameMapping frameMapping : mapping) {
 				frame.setObject(frameMapping.getFrameSlot(), page.getColumn(frameMapping.getColumn()));
 			}
+            frame.setObject(reduceNode.getSlot(), 0.0);
 		}
-
     }
     
     public abstract static class ReduceNode extends Node {
@@ -312,7 +314,12 @@ public class TruffleTest
 
 		@Override
 		public Object execute(VirtualFrame frame) {
-			return getSlice(frame).slice(getRow(frame) * length, length);
+			return helper(getSlice(frame), getRow(frame));
+		} 
+		
+		@SlowPath
+		private Object helper(Slice slice, int row) {
+			return slice.slice(row * length, length);
 		}
     }
     
