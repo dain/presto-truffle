@@ -50,9 +50,11 @@ public class TpchQuery6
         return getDate(shipDate, row).compareTo(MIN_SHIP_DATE) >= 0 &&
                 getDate(shipDate, row).compareTo(MAX_SHIP_DATE) < 0 &&
                 getDouble(discount, row) >= 0.05 &&
-                getDouble(discount, row) <= 0.07 &&
+                0.07 >= getDouble(discount, row) &&
                 getLong(quantity, row) < 24;
     }
+    
+    // 2.0632824238740677E8
 
     private static double getDouble(Slice slice, int row)
     {
