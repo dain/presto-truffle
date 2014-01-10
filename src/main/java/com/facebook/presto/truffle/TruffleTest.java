@@ -14,6 +14,7 @@ import java.util.List;
 
 import sun.misc.Unsafe;
 
+import com.google.common.base.Preconditions;
 import com.oracle.truffle.api.Arguments;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -54,7 +55,6 @@ public class TruffleTest {
             baseOffset_ = unsafe_.objectFieldOffset(Slice.class.getDeclaredField("base"));
             addressOffset_ = unsafe_.objectFieldOffset(Slice.class.getDeclaredField("address"));
         } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
         
@@ -139,10 +139,8 @@ public class TruffleTest {
             try {
                 frame.setDouble(slot, apply(frame.getDouble(slot), expressionNode.executeDouble(frame)));
             } catch (FrameSlotTypeException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
             } catch (UnexpectedResultException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
             }
         }
@@ -266,7 +264,6 @@ public class TruffleTest {
             try {
                 return frame.getInt(rowSlot);
             } catch (FrameSlotTypeException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
                 return 0;
             }
@@ -276,7 +273,6 @@ public class TruffleTest {
             try {
                 return (Slice) frame.getObject(sliceSlot);
             } catch (FrameSlotTypeException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
                 return null;
             }
@@ -294,6 +290,17 @@ public class TruffleTest {
     private static long getSliceAddress(Slice slice) {
         return unsafe.getLong(slice, addressOffset);
     }
+    
+    private static void checkIndexLength(int index, int length, Slice slice) {
+        checkPositionIndexes(index, index + length, slice.length());
+    }
+    
+    private static void checkPositionIndexes(int start, int end, int size) {
+        if (start < 0 || end < start || end > size) {
+            CompilerDirectives.transferToInterpreter();
+            Preconditions.checkPositionIndexes(start, end, size);
+        }
+    }
 
     public static class CellGetLongNode extends CellGetNode {
         public CellGetLongNode(FrameSlot sliceSlot, FrameSlot rowSlot) {
@@ -304,7 +311,7 @@ public class TruffleTest {
         public long executeLong(VirtualFrame frame) {
             Slice slice = getSlice(frame);
             int index = getRow(frame) * SizeOf.SIZE_OF_LONG;
-            // TODO: check indexes, make parts of it a slow path
+            checkIndexLength(index, SizeOf.SIZE_OF_LONG, slice);
             return CompilerDirectives.unsafeGetLong(getSliceBase(slice), getSliceAddress(slice) + index, true, getSliceSlot());
         }
 
@@ -322,8 +329,8 @@ public class TruffleTest {
         @Override
         public double executeDouble(VirtualFrame frame) {
             Slice slice = getSlice(frame);
-            int index = getRow(frame) * SizeOf.SIZE_OF_LONG;
-            // TODO: check indexes, make parts of it a slow path
+            int index = getRow(frame) * SizeOf.SIZE_OF_DOUBLE;
+            checkIndexLength(index, SizeOf.SIZE_OF_DOUBLE, slice);
             return CompilerDirectives.unsafeGetDouble(getSliceBase(slice), getSliceAddress(slice) + index, true, getSliceSlot());
         }
 
