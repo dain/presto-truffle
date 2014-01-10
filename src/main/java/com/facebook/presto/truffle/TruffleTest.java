@@ -6,11 +6,15 @@ import static com.facebook.presto.truffle.TpchDataGenerator.PRICE;
 import static com.facebook.presto.truffle.TpchDataGenerator.QUANTITY;
 import static com.facebook.presto.truffle.TpchDataGenerator.SHIP_DATE;
 import static com.facebook.presto.truffle.TpchDataGenerator.generateTestData;
+import static java.lang.String.format;
 import io.airlift.slice.SizeOf;
 import io.airlift.slice.Slice;
+import io.airlift.slice.Slices;
 
 import java.lang.reflect.Field;
 import java.util.List;
+
+import javax.annotation.Nullable;
 
 import sun.misc.Unsafe;
 
@@ -40,12 +44,16 @@ public class TruffleTest {
 
     private final static Unsafe unsafe;
     private final static long baseOffset;
+    private final static long referenceOffset;
     private final static long addressOffset;
+    private final static long sizeOffset;
 
     static {
         Unsafe unsafe_ = null;
         long baseOffset_ = -1;
+        long referenceOffset_ = -1;
         long addressOffset_ = -1;
+        long sizeOffset_ = -1;
         try {
             Field field = Unsafe.class.getDeclaredField("theUnsafe");
             field.setAccessible(true);
@@ -55,14 +63,18 @@ public class TruffleTest {
             }
 
             baseOffset_ = unsafe_.objectFieldOffset(Slice.class.getDeclaredField("base"));
+            referenceOffset_ = unsafe_.objectFieldOffset(Slice.class.getDeclaredField("reference"));
             addressOffset_ = unsafe_.objectFieldOffset(Slice.class.getDeclaredField("address"));
+            sizeOffset_ = unsafe_.objectFieldOffset(Slice.class.getDeclaredField("size"));
         } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
             e.printStackTrace();
         }
         
         unsafe = unsafe_;
         baseOffset = baseOffset_;
+        referenceOffset = referenceOffset_;
         addressOffset = addressOffset_;
+        sizeOffset = sizeOffset_;
     }
 
     public static void main(String[] args) {
@@ -289,10 +301,30 @@ public class TruffleTest {
         return unsafe.getObject(slice, baseOffset);
     }
 
+    private static Object getSliceReference(Slice slice) {
+        return unsafe.getObject(slice, referenceOffset);
+    }
+
     private static long getSliceAddress(Slice slice) {
         return unsafe.getLong(slice, addressOffset);
     }
-    
+
+    private static void setSliceBase(Slice slice, Object base) {
+        unsafe.putObject(slice, baseOffset, base);
+    }
+
+    private static void setSliceReference(Slice slice, Object reference) {
+        unsafe.putObject(slice, referenceOffset, reference);
+    }
+
+    private static void setSliceAddress(Slice slice, long address) {
+        unsafe.putLong(slice, addressOffset, address);
+    }
+
+    private static void setSliceSize(Slice slice, int size) {
+        unsafe.putInt(slice, sizeOffset, size);
+    }
+
     private static void checkIndexLength(int index, int length, Slice slice) {
         checkPositionIndexes(index, index + length, slice.length());
     }
@@ -301,6 +333,13 @@ public class TruffleTest {
         if (start < 0 || end < start || end > size) {
             CompilerDirectives.transferToInterpreter();
             Preconditions.checkPositionIndexes(start, end, size);
+        }
+    }
+    
+    private static void checkArgument(boolean expression, @Nullable Object errorMessage) {
+        if (!expression) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalArgumentException(String.valueOf(errorMessage));
         }
     }
 
@@ -357,9 +396,47 @@ public class TruffleTest {
             return helper(getSlice(frame), getRow(frame));
         }
 
-        @SlowPath
+        /**
+         * trufflized version {@link Slice#slice(int, int)}.
+         */
         private Slice helper(Slice slice, int row) {
-            return slice.slice(row * length, length);
+            int index = row * length;
+            if ((index == 0) && (length == slice.length())) {
+                return slice;
+            }
+            checkIndexLength(index, length, slice);
+            if (length == 0) {
+                return Slices.EMPTY_SLICE;
+            }
+
+            try {
+                Slice newSlice = (Slice) unsafe.allocateInstance(Slice.class);
+                long address = getSliceAddress(slice) + index;
+                Object base = getSliceBase(slice);
+                Object reference = getSliceReference(slice);
+                int size = length;
+
+                if (address <= 0) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalArgumentException(format("Invalid address: %s", address));
+                }
+                if (size <= 0) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalArgumentException(format("Invalid size: %s", size));
+                }
+                checkArgument((address + size) >= size, "Address + size is greater than 64 bits");
+
+                setSliceReference(newSlice, reference);
+                setSliceBase(newSlice, base);
+                setSliceAddress(newSlice, address);
+                setSliceSize(newSlice, size);
+
+                return newSlice;
+            } catch (InstantiationException e) {
+                CompilerDirectives.transferToInterpreter();
+                e.printStackTrace();
+                return null;
+            }
         }
 
         @Override
