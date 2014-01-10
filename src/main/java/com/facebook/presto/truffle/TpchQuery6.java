@@ -35,7 +35,7 @@ public class TpchQuery6
             double pageSum = 0.0;
             for (int row = 0; row < page.getRowCount(); row++) {
                 if (filter(row, discount, shipDate, quantity)) {
-                	pageSum += (getDouble(price, row) * getDouble(discount, row));
+                    pageSum += (getDouble(price, row) * getDouble(discount, row));
                     processedRows++;
                 }
             }

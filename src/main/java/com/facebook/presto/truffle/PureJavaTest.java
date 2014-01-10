@@ -20,5 +20,4 @@ public class PureJavaTest
         }
         System.out.println(sum);
     }
-
 }
