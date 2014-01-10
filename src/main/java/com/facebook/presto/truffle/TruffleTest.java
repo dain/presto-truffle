@@ -312,7 +312,8 @@ public class TruffleTest {
             Slice slice = getSlice(frame);
             int index = getRow(frame) * SizeOf.SIZE_OF_LONG;
             checkIndexLength(index, SizeOf.SIZE_OF_LONG, slice);
-            return CompilerDirectives.unsafeGetLong(getSliceBase(slice), getSliceAddress(slice) + index, true, getSliceSlot());
+            // TODO: unsafe access should be guarded by index check. Currently, we use false such that it can not float before the index check.
+            return CompilerDirectives.unsafeGetLong(getSliceBase(slice), getSliceAddress(slice) + index, false, getSliceSlot());
         }
 
         @Override
@@ -331,7 +332,8 @@ public class TruffleTest {
             Slice slice = getSlice(frame);
             int index = getRow(frame) * SizeOf.SIZE_OF_DOUBLE;
             checkIndexLength(index, SizeOf.SIZE_OF_DOUBLE, slice);
-            return CompilerDirectives.unsafeGetDouble(getSliceBase(slice), getSliceAddress(slice) + index, true, getSliceSlot());
+            // TODO: unsafe access should be guarded by index check. Currently, we use false such that it can not float before the index check.
+            return CompilerDirectives.unsafeGetDouble(getSliceBase(slice), getSliceAddress(slice) + index, false, getSliceSlot());
         }
 
         @Override
