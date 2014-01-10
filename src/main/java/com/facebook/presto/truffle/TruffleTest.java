@@ -38,6 +38,7 @@ import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.utilities.BranchProfile;
 
 public class TruffleTest {
     public final static int ITERATIONS = 30;
@@ -384,7 +385,9 @@ public class TruffleTest {
     }
 
     public static class CellGetSliceNode extends CellGetNode {
-        final private int length;
+        private final int length;
+        private final BranchProfile branchSame = new BranchProfile();
+        private final BranchProfile branchEmpty = new BranchProfile();
 
         public CellGetSliceNode(FrameSlot sliceSlot, FrameSlot rowSlot, int length) {
             super(sliceSlot, rowSlot);
@@ -402,10 +405,12 @@ public class TruffleTest {
         private Slice helper(Slice slice, int row) {
             int index = row * length;
             if ((index == 0) && (length == slice.length())) {
+                branchSame.enter();
                 return slice;
             }
             checkIndexLength(index, length, slice);
             if (length == 0) {
+                branchEmpty.enter();
                 return Slices.EMPTY_SLICE;
             }
 
