@@ -36,6 +36,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 public class TruffleTest {
+    public final static int ITERATIONS = 30;
+
     private final static Unsafe unsafe;
     private final static long baseOffset;
     private final static long addressOffset;
@@ -107,7 +109,7 @@ public class TruffleTest {
         CallTarget call = runtime.createCallTarget(new ReduceQueryNode(sumNode,        filterNode, mapping, rowSlot), desc);
 
         double sum = 0;
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < ITERATIONS; i++) {
             double pagesSum = 0;
             long start = System.nanoTime();
 
