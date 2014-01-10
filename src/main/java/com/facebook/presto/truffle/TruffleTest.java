@@ -35,28 +35,35 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 public class TruffleTest {
-    private static Unsafe unsafe = null;
-    private static long baseOffset = -1;
-    private static long addressOffset = -1;
+    private final static Unsafe unsafe;
+    private final static long baseOffset;
+    private final static long addressOffset;
 
-    public static void main(String[] args) {
-        // fetch theUnsafe object
-        Field field;
+    static {
+        Unsafe unsafe_ = null;
+        long baseOffset_ = -1;
+        long addressOffset_ = -1;
         try {
-            field = Unsafe.class.getDeclaredField("theUnsafe");
+            Field field = Unsafe.class.getDeclaredField("theUnsafe");
             field.setAccessible(true);
-            unsafe = (Unsafe) field.get(null);
-            if (unsafe == null) {
+            unsafe_ = (Unsafe) field.get(null);
+            if (unsafe_ == null) {
                 throw new RuntimeException("Unsafe access not available");
             }
 
-            baseOffset = unsafe.objectFieldOffset(Slice.class.getDeclaredField("base"));
-            addressOffset = unsafe.objectFieldOffset(Slice.class.getDeclaredField("address"));
+            baseOffset_ = unsafe_.objectFieldOffset(Slice.class.getDeclaredField("base"));
+            addressOffset_ = unsafe_.objectFieldOffset(Slice.class.getDeclaredField("address"));
         } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+        
+        unsafe = unsafe_;
+        baseOffset = baseOffset_;
+        addressOffset = addressOffset_;
+    }
 
+    public static void main(String[] args) {
         List<Page> pages = generateTestData();
         TruffleRuntime runtime = Truffle.getRuntime();
         FrameDescriptor desc = new FrameDescriptor();
