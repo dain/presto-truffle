@@ -56,4 +56,5 @@ PureJava (-server):      178.26ms
 PureJava (-graal):       126.15ms
 TruffleTest (-original): 378.23ms
 TruffleTest (-server):    88.22ms
+TruffleTest (-graal):     87.85ms
 
