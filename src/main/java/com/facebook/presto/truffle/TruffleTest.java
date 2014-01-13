@@ -24,6 +24,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.CompilerDirectives.SlowPath;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.ShortCircuit;
@@ -67,7 +68,7 @@ public class TruffleTest {
             addressOffset_ = unsafe_.objectFieldOffset(Slice.class.getDeclaredField("address"));
             sizeOffset_ = unsafe_.objectFieldOffset(Slice.class.getDeclaredField("size"));
         } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
-            e.printStackTrace();
+            throw new InternalError("Unsafe failed: " + e);
         }
         
         unsafe = unsafe_;
@@ -274,8 +275,9 @@ public class TruffleTest {
     }
 
     public abstract static class CellGetNode extends ExpressionNode {
-        final private FrameSlot sliceSlot;
-        final private FrameSlot rowSlot;
+        private final FrameSlot sliceSlot;
+        private final FrameSlot rowSlot;
+        protected final BranchProfile branchCheckIndex = new BranchProfile();
 
         public CellGetNode(FrameSlot sliceSlot, FrameSlot rowSlot) {
             this.sliceSlot = sliceSlot;
@@ -314,7 +316,7 @@ public class TruffleTest {
         public long executeLong(VirtualFrame frame) {
             Slice slice = getSlice(frame);
             int index = getRow(frame) * SizeOf.SIZE_OF_LONG;
-            checkIndexLength(index, SizeOf.SIZE_OF_LONG, slice);
+            checkIndexLength(index, SizeOf.SIZE_OF_LONG, slice, branchCheckIndex);
             // TODO: unsafe access should be guarded by index check. Currently, we use false such that it can not float before the index check.
             return CompilerDirectives.unsafeGetLong(getSliceBase(slice), getSliceAddress(slice) + index, false, getSliceSlot());
         }
@@ -334,7 +336,7 @@ public class TruffleTest {
         public double executeDouble(VirtualFrame frame) {
             Slice slice = getSlice(frame);
             int index = getRow(frame) * SizeOf.SIZE_OF_DOUBLE;
-            checkIndexLength(index, SizeOf.SIZE_OF_DOUBLE, slice);
+            checkIndexLength(index, SizeOf.SIZE_OF_DOUBLE, slice, branchCheckIndex);
             // TODO: unsafe access should be guarded by index check. Currently, we use false such that it can not float before the index check.
             return CompilerDirectives.unsafeGetDouble(getSliceBase(slice), getSliceAddress(slice) + index, false, getSliceSlot());
         }
@@ -349,6 +351,9 @@ public class TruffleTest {
         private final int length;
         private final BranchProfile branchSame = new BranchProfile();
         private final BranchProfile branchEmpty = new BranchProfile();
+        private final BranchProfile branchCheckArgument = new BranchProfile();
+        private final BranchProfile branchInvalidAddress = new BranchProfile();
+        private final BranchProfile branchInvalidSize = new BranchProfile();
 
         public CellGetSliceNode(FrameSlot sliceSlot, FrameSlot rowSlot, int length) {
             super(sliceSlot, rowSlot);
@@ -357,7 +362,8 @@ public class TruffleTest {
 
         @Override
         public Slice executeSlice(VirtualFrame frame) {
-            return helper(getSlice(frame), getRow(frame));
+            int row = getRow(frame);
+            return helper(getSlice(frame), row);
         }
 
         /**
@@ -369,7 +375,7 @@ public class TruffleTest {
                 branchSame.enter();
                 return slice;
             }
-            checkIndexLength(index, length, slice);
+            checkIndexLength(index, length, slice, branchCheckIndex);
             if (length == 0) {
                 branchEmpty.enter();
                 return Slices.EMPTY_SLICE;
@@ -383,14 +389,14 @@ public class TruffleTest {
                 int size = length;
 
                 if (address <= 0) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new IllegalArgumentException(format("Invalid address: %s", address));
+                    branchInvalidAddress.enter();
+                    throwIllegalArgumentException(address);
                 }
                 if (size <= 0) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new IllegalArgumentException(format("Invalid size: %s", size));
+                    branchInvalidSize.enter();
+                    throwIllegalArgumentException(size);
                 }
-                checkArgument((address + size) >= size, "Address + size is greater than 64 bits");
+                checkArgument((address + size) >= size, "Address + size is greater than 64 bits", branchCheckArgument);
 
                 setSliceReference(newSlice, reference);
                 setSliceBase(newSlice, base);
@@ -400,9 +406,18 @@ public class TruffleTest {
                 return newSlice;
             } catch (InstantiationException e) {
                 CompilerDirectives.transferToInterpreter();
-                e.printStackTrace();
-                return null;
+                throw new InternalError("was not able to perform new Allocation of Slice");
             }
+        }
+
+        @SlowPath
+        private void throwIllegalArgumentException(int size) {
+            throw new IllegalArgumentException(format("Invalid size: %s", size));
+        }
+
+        @SlowPath
+        private void throwIllegalArgumentException(long address) {
+            throw new IllegalArgumentException(format("Invalid address: %s", address));
         }
 
         @Override
@@ -524,21 +539,31 @@ public class TruffleTest {
         unsafe.putInt(slice, sizeOffset, size);
     }
 
-    private static void checkIndexLength(int index, int length, Slice slice) {
-        checkPositionIndexes(index, index + length, slice.length());
+    private static void checkIndexLength(int index, int length, Slice slice, BranchProfile profile) {
+        checkPositionIndexes(index, index + length, slice.length(), profile);
     }
     
-    private static void checkPositionIndexes(int start, int end, int size) {
+    private static void checkPositionIndexes(int start, int end, int size, BranchProfile profile) {
         if (start < 0 || end < start || end > size) {
-            CompilerDirectives.transferToInterpreter();
-            Preconditions.checkPositionIndexes(start, end, size);
+            profile.enter();
+            preconditionsCheckPositionIndexes(start, end, size);
         }
     }
+
+    @SlowPath
+    private static void preconditionsCheckPositionIndexes(int start, int end, int size) {
+        Preconditions.checkPositionIndexes(start, end, size);
+    }
     
-    private static void checkArgument(boolean expression, @Nullable Object errorMessage) {
+    private static void checkArgument(boolean expression, @Nullable Object errorMessage, BranchProfile profile) {
         if (!expression) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalArgumentException(String.valueOf(errorMessage));
+            profile.enter();
+            throwIllegalArgumentException(errorMessage);
         }
+    }
+
+    @SlowPath
+    private static void throwIllegalArgumentException(Object errorMessage) {
+        throw new IllegalArgumentException(String.valueOf(errorMessage));
     }
 }
