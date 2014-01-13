@@ -22,7 +22,6 @@ import com.google.common.base.Preconditions;
 import com.oracle.truffle.api.Arguments;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.SlowPath;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -94,6 +93,15 @@ public class TruffleTest {
              new FrameMapping(SHIP_DATE, shipDateSlot),
              new FrameMapping(QUANTITY, quantitySlot), };
 
+        /*
+         * Build AST for expression:
+         * select sum(price * discount) from pages where
+         *  shipDate >= cst1 and
+         *  shipDate < cst2 and
+         *  discount >= 0.05 and
+         *  discount <= 0.07 and
+         *  quantity < 24
+         */
         ExpressionNode expressionNode = TruffleTestFactory.MulNodeFactory.create(
              new CellGetDoubleNode(priceSlot, rowSlot),
              new CellGetDoubleNode(discountSlot, rowSlot));
@@ -117,9 +125,9 @@ public class TruffleTest {
                            new CellGetDoubleNode(discountSlot, rowSlot)),
                            TruffleTestFactory.LessThanNodeFactory.create(
                                new CellGetLongNode(quantitySlot, rowSlot),
-                               new LongConstantNode( 24L))))));
+                               new LongConstantNode(24L))))));
 
-        CallTarget call = runtime.createCallTarget(new ReduceQueryNode(sumNode,        filterNode, mapping, rowSlot), desc);
+        CallTarget call = runtime.createCallTarget(new ReduceQueryNode(sumNode, filterNode, mapping, rowSlot), desc);
 
         double sum = 0;
         for (int i = 0; i < ITERATIONS; i++) {
@@ -137,9 +145,8 @@ public class TruffleTest {
     }
 
     public abstract static class DoubleReduceNode extends PrestoNode {
+        @Child private final ExpressionNode expressionNode;
         private final FrameSlot slot;
-        @Child
-        private final ExpressionNode expressionNode;
 
         public DoubleReduceNode(FrameSlot slot, ExpressionNode expressionNode) {
             this.slot = slot;
@@ -163,6 +170,16 @@ public class TruffleTest {
         public abstract double apply(double oldValue, double newValue);
     }
 
+    @TypeSystem({ boolean.class, long.class, double.class, Slice.class })
+    public static class PrestoTypes {
+
+    }
+
+    @TypeSystemReference(PrestoTypes.class)
+    public static class PrestoNode extends Node {
+
+    }
+
     public static class DoubleSumNode extends DoubleReduceNode {
         public DoubleSumNode(FrameSlot slot, ExpressionNode expression) {
             super(slot, expression);
@@ -172,16 +189,6 @@ public class TruffleTest {
         public double apply(double oldValue, double newValue) {
             return oldValue + newValue;
         }
-    }
-
-    @TypeSystem({ boolean.class, long.class, double.class, Slice.class })
-    public static class PrestoTypes {
-
-    }
-
-    @TypeSystemReference(PrestoTypes.class)
-    public static class PrestoNode extends Node {
-
     }
 
     public static abstract class ExpressionNode extends PrestoNode {
@@ -295,52 +302,6 @@ public class TruffleTest {
 
         protected FrameSlot getSliceSlot() {
             return sliceSlot;
-        }
-    }
-
-    private static Object getSliceBase(Slice slice) {
-        return unsafe.getObject(slice, baseOffset);
-    }
-
-    private static Object getSliceReference(Slice slice) {
-        return unsafe.getObject(slice, referenceOffset);
-    }
-
-    private static long getSliceAddress(Slice slice) {
-        return unsafe.getLong(slice, addressOffset);
-    }
-
-    private static void setSliceBase(Slice slice, Object base) {
-        unsafe.putObject(slice, baseOffset, base);
-    }
-
-    private static void setSliceReference(Slice slice, Object reference) {
-        unsafe.putObject(slice, referenceOffset, reference);
-    }
-
-    private static void setSliceAddress(Slice slice, long address) {
-        unsafe.putLong(slice, addressOffset, address);
-    }
-
-    private static void setSliceSize(Slice slice, int size) {
-        unsafe.putInt(slice, sizeOffset, size);
-    }
-
-    private static void checkIndexLength(int index, int length, Slice slice) {
-        checkPositionIndexes(index, index + length, slice.length());
-    }
-    
-    private static void checkPositionIndexes(int start, int end, int size) {
-        if (start < 0 || end < start || end > size) {
-            CompilerDirectives.transferToInterpreter();
-            Preconditions.checkPositionIndexes(start, end, size);
-        }
-    }
-    
-    private static void checkArgument(boolean expression, @Nullable Object errorMessage) {
-        if (!expression) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalArgumentException(String.valueOf(errorMessage));
         }
     }
 
@@ -531,6 +492,53 @@ public class TruffleTest {
 
         public static Page get(VirtualFrame frame) {
             return frame.getArguments(PageArguments.class).argument;
+        }
+    }
+    
+    // Helpers to access Slice datastructure
+    private static Object getSliceBase(Slice slice) {
+        return unsafe.getObject(slice, baseOffset);
+    }
+
+    private static Object getSliceReference(Slice slice) {
+        return unsafe.getObject(slice, referenceOffset);
+    }
+
+    private static long getSliceAddress(Slice slice) {
+        return unsafe.getLong(slice, addressOffset);
+    }
+
+    private static void setSliceBase(Slice slice, Object base) {
+        unsafe.putObject(slice, baseOffset, base);
+    }
+
+    private static void setSliceReference(Slice slice, Object reference) {
+        unsafe.putObject(slice, referenceOffset, reference);
+    }
+
+    private static void setSliceAddress(Slice slice, long address) {
+        unsafe.putLong(slice, addressOffset, address);
+    }
+
+    private static void setSliceSize(Slice slice, int size) {
+        unsafe.putInt(slice, sizeOffset, size);
+    }
+
+    private static void checkIndexLength(int index, int length, Slice slice) {
+        checkPositionIndexes(index, index + length, slice.length());
+    }
+    
+    private static void checkPositionIndexes(int start, int end, int size) {
+        if (start < 0 || end < start || end > size) {
+            CompilerDirectives.transferToInterpreter();
+            Preconditions.checkPositionIndexes(start, end, size);
+        }
+    }
+    
+    private static void checkArgument(boolean expression, @Nullable Object errorMessage) {
+        if (!expression) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalArgumentException(String.valueOf(errorMessage));
         }
     }
 }
