@@ -51,10 +51,12 @@ After about 4 iterations, Truffle will switch from the interpreter to compiled c
 
 Evaluation
 ==========
+Time needed per iteration:
+```
 PureJava (-original):    177.85ms
 PureJava (-server):      178.26ms
 PureJava (-graal):       126.15ms
 TruffleTest (-original): 378.23ms
 TruffleTest (-server):    88.22ms
 TruffleTest (-graal):     87.85ms
-
+```
