@@ -39,11 +39,11 @@ export GRAAL_HOME=~/work/graal/jdk1.7.0_45/product/
 After performing a `maven install` build, run the following from the presto-truffle directory to run the tests:
 
 ```
-$GRAAL_HOME/bin/java -server -G:TruffleCompilationThreshold=10 -Xmx4g -cp target/presto-truffle-1.0-SNAPSHOT.jar:$HOME/.m2/repository/io/airlift/slice/0.2/slice-0.2.jar:$HOME/.m2/repository/com/google/guava/guava/14.0.1/guava-14.0.1.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-api/1.0-SNAPSHOT/truffle-api-1.0-SNAPSHOT.jar com.facebook.presto.truffle.PureJavaTest
+$GRAAL_HOME/bin/java -server -G:TruffleCompilationThreshold=10 -Xmx4g -cp target/presto-truffle-1.0-SNAPSHOT.jar:$HOME/.m2/repository/io/airlift/slice/0.2/slice-0.2.jar:$HOME/.m2/repository/com/google/guava/guava/14.0.1/guava-14.0.1.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-api/1.0-SNAPSHOT/truffle-api-1.0-SNAPSHOT.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-dsl-processor/1.0-SNAPSHOT/truffle-dsl-processor-1.0-SNAPSHOT.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-api-dsl/1.0-SNAPSHOT/truffle-api-dsl-1.0-SNAPSHOT.jar com.facebook.presto.truffle.PureJavaTest
 ```
 
 ```
-$GRAAL_HOME/bin/java -server -G:TruffleCompilationThreshold=10 -Xmx4g -cp target/presto-truffle-1.0-SNAPSHOT.jar:$HOME/.m2/repository/io/airlift/slice/0.2/slice-0.2.jar:$HOME/.m2/repository/com/google/guava/guava/14.0.1/guava-14.0.1.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-api/1.0-SNAPSHOT/truffle-api-1.0-SNAPSHOT.jar com.facebook.presto.truffle.TruffleTest
+$GRAAL_HOME/bin/java -server -G:TruffleCompilationThreshold=10 -Xmx4g -cp target/presto-truffle-1.0-SNAPSHOT.jar:$HOME/.m2/repository/io/airlift/slice/0.2/slice-0.2.jar:$HOME/.m2/repository/com/google/guava/guava/14.0.1/guava-14.0.1.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-api/1.0-SNAPSHOT/truffle-api-1.0-SNAPSHOT.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-dsl-processor/1.0-SNAPSHOT/truffle-dsl-processor-1.0-SNAPSHOT.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-api-dsl/1.0-SNAPSHOT/truffle-api-dsl-1.0-SNAPSHOT.jar com.facebook.presto.truffle.TruffleTest
 ```
 
 After about 4 iterations, Truffle will switch from the interpreter to compiled code and performance will improve significantly.
