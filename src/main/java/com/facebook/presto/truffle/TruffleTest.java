@@ -22,9 +22,9 @@ import com.google.common.base.Preconditions;
 import com.oracle.truffle.api.Arguments;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.SlowPath;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
-import com.oracle.truffle.api.CompilerDirectives.SlowPath;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.ShortCircuit;
@@ -60,7 +60,7 @@ public class TruffleTest {
             field.setAccessible(true);
             unsafe_ = (Unsafe) field.get(null);
             if (unsafe_ == null) {
-                throw new RuntimeException("Unsafe access not available");
+                throw new InternalError("Unsafe access not available");
             }
 
             baseOffset_ = unsafe_.objectFieldOffset(Slice.class.getDeclaredField("base"));
@@ -161,10 +161,8 @@ public class TruffleTest {
         public void execute(VirtualFrame frame) {
             try {
                 frame.setDouble(slot, apply(frame.getDouble(slot), expressionNode.executeDouble(frame)));
-            } catch (FrameSlotTypeException e) {
-                e.printStackTrace();
-            } catch (UnexpectedResultException e) {
-                e.printStackTrace();
+            } catch (FrameSlotTypeException | UnexpectedResultException e) {
+                throw new InternalError("not implemented yet: rewrite of reduce node");
             }
         }
 
@@ -288,8 +286,7 @@ public class TruffleTest {
             try {
                 return frame.getInt(rowSlot);
             } catch (FrameSlotTypeException e) {
-                e.printStackTrace();
-                return 0;
+                throw new InternalError("should not reach here");
             }
         }
 
@@ -297,8 +294,7 @@ public class TruffleTest {
             try {
                 return (Slice) frame.getObject(sliceSlot);
             } catch (FrameSlotTypeException e) {
-                e.printStackTrace();
-                return null;
+                throw new InternalError("should not reach here");
             }
         }
 
