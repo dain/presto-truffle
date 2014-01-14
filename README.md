@@ -14,7 +14,7 @@ where shipdate >= '1994-01-01'
    and quantity < 24;                                
 ```
 
-This test is excuted using pure Java code and with a single Truffle node wrapping this code.
+This test is excuted using pure Java code and with a hand-crafted Truffle AST modelling this code.
 
 Setup
 =====
@@ -39,11 +39,24 @@ export GRAAL_HOME=~/work/graal/jdk1.7.0_45/product/
 After performing a `maven install` build, run the following from the presto-truffle directory to run the tests:
 
 ```
-$GRAAL_HOME/bin/java -server -G:TruffleCompilationThreshold=10 -Xmx4g -cp target/presto-truffle-1.0-SNAPSHOT.jar:$HOME/.m2/repository/io/airlift/slice/0.2/slice-0.2.jar:$HOME/.m2/repository/com/google/guava/guava/14.0.1/guava-14.0.1.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-api/1.0-SNAPSHOT/truffle-api-1.0-SNAPSHOT.jar com.facebook.presto.truffle.PureJavaTest
+$GRAAL_HOME/bin/java -server -G:TruffleCompilationThreshold=10 -Xmx4g -cp target/presto-truffle-1.0-SNAPSHOT.jar:$HOME/.m2/repository/io/airlift/slice/0.2/slice-0.2.jar:$HOME/.m2/repository/com/google/guava/guava/14.0.1/guava-14.0.1.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-api/1.0-SNAPSHOT/truffle-api-1.0-SNAPSHOT.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-dsl-processor/1.0-SNAPSHOT/truffle-dsl-processor-1.0-SNAPSHOT.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-api-dsl/1.0-SNAPSHOT/truffle-api-dsl-1.0-SNAPSHOT.jar com.facebook.presto.truffle.PureJavaTest
 ```
 
 ```
-$GRAAL_HOME/bin/java -server -G:TruffleCompilationThreshold=10 -Xmx4g -cp target/presto-truffle-1.0-SNAPSHOT.jar:$HOME/.m2/repository/io/airlift/slice/0.2/slice-0.2.jar:$HOME/.m2/repository/com/google/guava/guava/14.0.1/guava-14.0.1.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-api/1.0-SNAPSHOT/truffle-api-1.0-SNAPSHOT.jar com.facebook.presto.truffle.TruffleTest
+$GRAAL_HOME/bin/java -server -G:TruffleCompilationThreshold=10 -Xmx4g -cp target/presto-truffle-1.0-SNAPSHOT.jar:$HOME/.m2/repository/io/airlift/slice/0.2/slice-0.2.jar:$HOME/.m2/repository/com/google/guava/guava/14.0.1/guava-14.0.1.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-api/1.0-SNAPSHOT/truffle-api-1.0-SNAPSHOT.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-dsl-processor/1.0-SNAPSHOT/truffle-dsl-processor-1.0-SNAPSHOT.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-api-dsl/1.0-SNAPSHOT/truffle-api-dsl-1.0-SNAPSHOT.jar com.facebook.presto.truffle.TruffleTest
 ```
 
-After 10 runs, Truffle will compile the node and performance will drop significantly.
+After about 4 iterations, Truffle will switch from the interpreter to compiled code and performance will improve significantly.
+
+
+Evaluation
+==========
+Time needed per iteration:
+```
+PureJava (-original):    177.85ms
+PureJava (-server):      178.26ms
+PureJava (-graal):       126.15ms
+TruffleTest (-original): 378.23ms
+TruffleTest (-server):    88.22ms
+TruffleTest (-graal):     87.85ms
+```
