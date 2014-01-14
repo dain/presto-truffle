@@ -60,7 +60,7 @@ public class TruffleTest {
             field.setAccessible(true);
             unsafe_ = (Unsafe) field.get(null);
             if (unsafe_ == null) {
-                throw new InternalError("Unsafe access not available");
+                throw new IllegalStateException("Unsafe access not available");
             }
 
             baseOffset_ = unsafe_.objectFieldOffset(Slice.class.getDeclaredField("base"));
@@ -68,7 +68,7 @@ public class TruffleTest {
             addressOffset_ = unsafe_.objectFieldOffset(Slice.class.getDeclaredField("address"));
             sizeOffset_ = unsafe_.objectFieldOffset(Slice.class.getDeclaredField("size"));
         } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
-            throw new InternalError("Unsafe failed: " + e);
+            throw new IllegalStateException("Unsafe failed: " + e);
         }
         
         unsafe = unsafe_;
@@ -162,7 +162,7 @@ public class TruffleTest {
             try {
                 frame.setDouble(slot, apply(frame.getDouble(slot), expressionNode.executeDouble(frame)));
             } catch (FrameSlotTypeException | UnexpectedResultException e) {
-                throw new InternalError("not implemented yet: rewrite of reduce node");
+                throw new IllegalStateException("not implemented yet: rewrite of reduce node");
             }
         }
 
@@ -286,7 +286,7 @@ public class TruffleTest {
             try {
                 return frame.getInt(rowSlot);
             } catch (FrameSlotTypeException e) {
-                throw new InternalError("should not reach here");
+                throw new IllegalStateException("should not reach here");
             }
         }
 
@@ -294,7 +294,7 @@ public class TruffleTest {
             try {
                 return (Slice) frame.getObject(sliceSlot);
             } catch (FrameSlotTypeException e) {
-                throw new InternalError("should not reach here");
+                throw new IllegalStateException("should not reach here");
             }
         }
 
@@ -402,7 +402,7 @@ public class TruffleTest {
                 return newSlice;
             } catch (InstantiationException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new InternalError("was not able to perform new Allocation of Slice");
+                throw new IllegalStateException("was not able to perform new Allocation of Slice");
             }
         }
 
