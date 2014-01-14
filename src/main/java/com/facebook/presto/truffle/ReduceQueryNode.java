@@ -39,15 +39,14 @@ public final class ReduceQueryNode extends RootNode {
                     reduceNode.execute(frame);
                 }
             } catch (UnexpectedResultException e) {
-                e.printStackTrace();
+                throw new IllegalStateException("not implemented yet: rewrite in reduce node");
             }
         }
 
         try {
             return frame.getDouble(reduceNode.getSlot());
         } catch (FrameSlotTypeException e) {
-            e.printStackTrace();
-            return null;
+            throw new IllegalStateException("should not reach here");
         }
     }
 
