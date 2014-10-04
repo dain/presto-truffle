@@ -7,6 +7,8 @@ import static com.facebook.presto.truffle.TpchDataGenerator.QUANTITY;
 import static com.facebook.presto.truffle.TpchDataGenerator.SHIP_DATE;
 import static com.facebook.presto.truffle.TpchDataGenerator.generateTestData;
 import static java.lang.String.format;
+
+import com.oracle.truffle.api.*;
 import io.airlift.slice.SizeOf;
 import io.airlift.slice.Slice;
 import io.airlift.slice.Slices;
@@ -19,12 +21,7 @@ import javax.annotation.Nullable;
 import sun.misc.Unsafe;
 
 import com.google.common.base.Preconditions;
-import com.oracle.truffle.api.Arguments;
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.SlowPath;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.ShortCircuit;
@@ -81,13 +78,13 @@ public class TruffleTest {
     public static void main(String[] args) {
         List<Page> pages = generateTestData();
         TruffleRuntime runtime = Truffle.getRuntime();
-        FrameDescriptor desc = new FrameDescriptor();
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
 
-        FrameSlot rowSlot = desc.addFrameSlot("row", FrameSlotKind.Int);
-        FrameSlot priceSlot = desc.addFrameSlot("PRICE", FrameSlotKind.Object);
-        FrameSlot discountSlot = desc.addFrameSlot("DISCOUNT", FrameSlotKind.Object);
-        FrameSlot shipDateSlot = desc.addFrameSlot("SHIP_DATE", FrameSlotKind.Object);
-        FrameSlot quantitySlot = desc.addFrameSlot("QUANTITY", FrameSlotKind.Object);
+        FrameSlot rowSlot = frameDescriptor.addFrameSlot("row", FrameSlotKind.Int);
+        FrameSlot priceSlot = frameDescriptor.addFrameSlot("PRICE", FrameSlotKind.Object);
+        FrameSlot discountSlot = frameDescriptor.addFrameSlot("DISCOUNT", FrameSlotKind.Object);
+        FrameSlot shipDateSlot = frameDescriptor.addFrameSlot("SHIP_DATE", FrameSlotKind.Object);
+        FrameSlot quantitySlot = frameDescriptor.addFrameSlot("QUANTITY", FrameSlotKind.Object);
         FrameMapping[] mapping = new FrameMapping[] {
              new FrameMapping(PRICE, priceSlot),
              new FrameMapping(DISCOUNT, discountSlot),
@@ -107,7 +104,7 @@ public class TruffleTest {
              new CellGetDoubleNode(priceSlot, rowSlot),
              new CellGetDoubleNode(discountSlot, rowSlot));
 
-        DoubleSumNode sumNode = new DoubleSumNode(desc.addFrameSlot("sum", FrameSlotKind.Double), expressionNode);
+        DoubleSumNode sumNode = new DoubleSumNode(frameDescriptor.addFrameSlot("sum", FrameSlotKind.Double), expressionNode);
 
         ExpressionNode filterNode = TruffleTestFactory.ConjunctionNodeFactory.create(
             TruffleTestFactory.GreaterEqualsNodeFactory.create(
@@ -128,7 +125,8 @@ public class TruffleTest {
                                new CellGetLongNode(quantitySlot, rowSlot),
                                new LongConstantNode(24L))))));
 
-        CallTarget call = runtime.createCallTarget(new ReduceQueryNode(sumNode, filterNode, mapping, rowSlot), desc);
+        // todo passed in frameDescriptor before, should we do something with it??
+        RootCallTarget call = runtime.createCallTarget(new ReduceQueryNode(sumNode, filterNode, mapping, rowSlot,frameDescriptor));
 
         double sum = 0;
         for (int i = 0; i < ITERATIONS; i++) {
@@ -136,7 +134,8 @@ public class TruffleTest {
             long start = System.nanoTime();
 
             for (Page page : pages) {
-                pagesSum += (double) call.call(new PageArguments(page));
+//                VirtualFrame frame = runtime.createVirtualFrame(new Object[]{page}, frameDescriptor);
+                pagesSum += (double) call.call(page);
             }
             sum += pagesSum;
             long duration = System.nanoTime() - start;
@@ -146,12 +145,12 @@ public class TruffleTest {
     }
 
     public abstract static class DoubleReduceNode extends PrestoNode {
-        @Child private final ExpressionNode expressionNode;
+        @Child private ExpressionNode expressionNode;
         private final FrameSlot slot;
 
         public DoubleReduceNode(FrameSlot slot, ExpressionNode expressionNode) {
             this.slot = slot;
-            this.expressionNode = this.adoptChild(expressionNode);
+            this.expressionNode = expressionNode;
         }
 
         public FrameSlot getSlot() {
@@ -494,18 +493,6 @@ public class TruffleTest {
         }
     }
 
-    public static final class PageArguments extends Arguments {
-        public final Page argument;
-
-        public PageArguments(Page argument) {
-            this.argument = argument;
-        }
-
-        public static Page get(VirtualFrame frame) {
-            return frame.getArguments(PageArguments.class).argument;
-        }
-    }
-    
     // Helpers to access Slice datastructure
     private static Object getSliceBase(Slice slice) {
         return unsafe.getObject(slice, baseOffset);

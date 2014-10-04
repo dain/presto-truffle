@@ -1,11 +1,12 @@
 package com.facebook.presto.truffle;
 
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import io.airlift.slice.Slice;
 
 import com.facebook.presto.truffle.TruffleTest.DoubleReduceNode;
 import com.facebook.presto.truffle.TruffleTest.ExpressionNode;
 import com.facebook.presto.truffle.TruffleTest.FrameMapping;
-import com.facebook.presto.truffle.TruffleTest.PageArguments;
 import com.oracle.truffle.api.CompilerDirectives.SlowPath;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
@@ -15,21 +16,22 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 public final class ReduceQueryNode extends RootNode {
-    @Child private final DoubleReduceNode reduceNode;
-    @Child private final ExpressionNode filterNode;
+    @Child private DoubleReduceNode reduceNode;
+    @Child private ExpressionNode filterNode;
     private final FrameMapping[] mapping;
     private final FrameSlot rowSlot;
 
-    public ReduceQueryNode(DoubleReduceNode reduceNode, ExpressionNode filterNode, FrameMapping[] arguments, FrameSlot rowSlot) {
+    public ReduceQueryNode(DoubleReduceNode reduceNode, ExpressionNode filterNode, FrameMapping[] arguments, FrameSlot rowSlot, FrameDescriptor frameDescriptor) {
+        super(null,frameDescriptor);
         this.rowSlot = rowSlot;
-        this.reduceNode = adoptChild(reduceNode);
-        this.filterNode = adoptChild(filterNode);
+        this.reduceNode = reduceNode;
+        this.filterNode = filterNode;
         this.mapping = arguments;
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        Page page = PageArguments.get(frame);
+        Page page = (Page)frame.getArguments()[0];
         initFrame(frame, page);
 
         for (int row = 0; row < page.getRowCount(); row++) {

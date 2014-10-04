@@ -18,6 +18,7 @@
 
     <properties>
         <air.check.skip-all>true</air.check.skip-all>
+        <truffle.version>0.5</truffle.version>
     </properties>
 
     <dependencies>
@@ -37,32 +38,32 @@
             <version>0.2</version>
         </dependency>
 
-        <!--
-        After building Graal run these commands to publish the artifacts to your maven local repository:
 
-        mvn install:install-file -Dfile=./graal/com.oracle.truffle.api/com.oracle.truffle.api.jar -DgroupId=com.oracle.truffle -DartifactId=truffle-api -Dversion=1.0-SNAPSHOT -Dpackaging=jar
-        mvn install:install-file -Dfile=./graal/com.oracle.truffle.api.dsl/com.oracle.truffle.api.dsl.jar -DgroupId=com.oracle.truffle -DartifactId=truffle-api-dsl -Dversion=1.0-SNAPSHOT -Dpackaging=jar
-        mvn install:install-file -Dfile=./graal/com.oracle.truffle.dsl.processor/com.oracle.truffle.dsl.processor.jar -DgroupId=com.oracle.truffle -DartifactId=truffle-dsl-processor -Dversion=1.0-SNAPSHOT -Dpackaging=jar
-
-        -->
         <dependency>
-            <groupId>com.oracle.truffle</groupId>
-            <artifactId>truffle-api</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <groupId>com.oracle</groupId>
+            <artifactId>truffle</artifactId>
+            <version>${truffle.version}</version>
         </dependency>
 
         <dependency>
-            <groupId>com.oracle.truffle</groupId>
-            <artifactId>truffle-api-dsl</artifactId>
-            <version>1.0-SNAPSHOT</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.oracle.truffle</groupId>
+            <groupId>com.oracle</groupId>
             <artifactId>truffle-dsl-processor</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>${truffle.version}</version>
         </dependency>
     </dependencies>
+
+    <repositories>
+        <repository>
+            <id>truffle</id>
+            <url>http://lafo.ssw.uni-linz.ac.at/nexus/content/repositories/releases/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
 
     <build>
         <plugins>

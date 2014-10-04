@@ -19,13 +19,7 @@ This test is excuted using pure Java code and with a hand-crafted Truffle AST mo
 Setup
 =====
 
-After building a Graal VM run the following commands in the Graal directory 
-to publish the Truffle artifacts to the local maven repository
-```
-mvn install:install-file -Dfile=./graal/com.oracle.truffle.api/com.oracle.truffle.api.jar -DgroupId=com.oracle.truffle -DartifactId=truffle-api -Dversion=1.0-SNAPSHOT -Dpackaging=jar
-mvn install:install-file -Dfile=./graal/com.oracle.truffle.api.dsl/com.oracle.truffle.api.dsl.jar -DgroupId=com.oracle.truffle -DartifactId=truffle-api-dsl -Dversion=1.0-SNAPSHOT -Dpackaging=jar
-mvn install:install-file -Dfile=./graal/com.oracle.truffle.dsl.processor/com.oracle.truffle.dsl.processor.jar -DgroupId=com.oracle.truffle -DartifactId=truffle-dsl-processor -Dversion=1.0-SNAPSHOT -Dpackaging=jar
-```
+Download the binary Graal VM for your OS from: http://lafo.ssw.uni-linz.ac.at/builds/
 
 Execution
 =========
@@ -33,17 +27,17 @@ Execution
 Set the `GRAAL_HOME` environment variable to point to your Graal VM.  For, example:
 
 ```
-export GRAAL_HOME=~/work/graal/jdk1.7.0_45/product/
+export GRAAL_HOME=~/Downloads/graal/jdk1.8.0/product/
 ```
 
 After performing a `maven install` build, run the following from the presto-truffle directory to run the tests:
 
 ```
-$GRAAL_HOME/bin/java -server -G:TruffleCompilationThreshold=10 -Xmx4g -cp target/presto-truffle-1.0-SNAPSHOT.jar:$HOME/.m2/repository/io/airlift/slice/0.2/slice-0.2.jar:$HOME/.m2/repository/com/google/guava/guava/14.0.1/guava-14.0.1.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-api/1.0-SNAPSHOT/truffle-api-1.0-SNAPSHOT.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-dsl-processor/1.0-SNAPSHOT/truffle-dsl-processor-1.0-SNAPSHOT.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-api-dsl/1.0-SNAPSHOT/truffle-api-dsl-1.0-SNAPSHOT.jar com.facebook.presto.truffle.PureJavaTest
+$GRAAL_HOME/bin/java -server -G:TruffleCompilationThreshold=10 -Xmx4g -cp target/presto-truffle-1.0-SNAPSHOT.jar:$HOME/.m2/repository/io/airlift/slice/0.2/slice-0.2.jar:$HOME/.m2/repository/com/google/guava/guava/14.0.1/guava-14.0.1.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-api/0.5/truffle-api-0.5.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-dsl-processor/0.5/truffle-dsl-processor-0.5.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-api-dsl/0.5/truffle-api-dsl-0.5.jar com.facebook.presto.truffle.PureJavaTest
 ```
 
 ```
-$GRAAL_HOME/bin/java -server -G:TruffleCompilationThreshold=10 -Xmx4g -cp target/presto-truffle-1.0-SNAPSHOT.jar:$HOME/.m2/repository/io/airlift/slice/0.2/slice-0.2.jar:$HOME/.m2/repository/com/google/guava/guava/14.0.1/guava-14.0.1.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-api/1.0-SNAPSHOT/truffle-api-1.0-SNAPSHOT.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-dsl-processor/1.0-SNAPSHOT/truffle-dsl-processor-1.0-SNAPSHOT.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-api-dsl/1.0-SNAPSHOT/truffle-api-dsl-1.0-SNAPSHOT.jar com.facebook.presto.truffle.TruffleTest
+$GRAAL_HOME/bin/java -server -G:TruffleCompilationThreshold=10 -Xmx4g -cp target/presto-truffle-1.0-SNAPSHOT.jar:$HOME/.m2/repository/io/airlift/slice/0.2/slice-0.2.jar:$HOME/.m2/repository/com/google/guava/guava/14.0.1/guava-14.0.1.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-api/0.5/truffle-api-0.5.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-dsl-processor/0.5/truffle-dsl-processor-0.5.jar:$HOME/.m2/repository/com/oracle/truffle/truffle-api-dsl/0.5/truffle-api-dsl-0.5.jar com.facebook.presto.truffle.TruffleTest
 ```
 
 After about 4 iterations, Truffle will switch from the interpreter to compiled code and performance will improve significantly.
