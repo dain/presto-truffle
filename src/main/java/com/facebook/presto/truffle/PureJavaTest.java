@@ -12,7 +12,7 @@ public class PureJavaTest
         List<Page> pages = generateTestData();
 
         double sum = 0;
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < TruffleTest.ITERATIONS; i++) {
             long start = System.nanoTime();
             sum += executeTpchQuery6(pages);
             long duration = System.nanoTime() - start;
@@ -20,5 +20,4 @@ public class PureJavaTest
         }
         System.out.println(sum);
     }
-
 }

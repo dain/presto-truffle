@@ -13,9 +13,14 @@ import static com.google.common.base.Charsets.UTF_8;
 
 public class TpchQuery6
 {
-    private static final Slice MIN_SHIP_DATE = Slices.copiedBuffer("1994-01-01", UTF_8);
-    private static final Slice MAX_SHIP_DATE = Slices.copiedBuffer("1995-01-01", UTF_8);
+    public static final Slice MIN_SHIP_DATE = Slices.copiedBuffer("1994-01-01", UTF_8);
+    public static final Slice MAX_SHIP_DATE = Slices.copiedBuffer("1995-01-01", UTF_8);
 
+    /*
+     * select sum(price * discount) from pages where shipDate >= cst1 and shipDate < cst2 and discount >= 0.05 and discount <= 0.07 and quantity < 24
+     * select reduce(exp) from it where exp
+     * exp of columns
+     */
     public static double executeTpchQuery6(Iterable<Page> pages)
     {
         double sum = 0;
@@ -27,12 +32,14 @@ public class TpchQuery6
             Slice shipDate = page.getColumn(SHIP_DATE);
             Slice quantity = page.getColumn(QUANTITY);
 
+            double pageSum = 0.0;
             for (int row = 0; row < page.getRowCount(); row++) {
                 if (filter(row, discount, shipDate, quantity)) {
-                    sum += (getDouble(price, row) * getDouble(discount, row));
+                    pageSum += (getDouble(price, row) * getDouble(discount, row));
                     processedRows++;
                 }
             }
+            sum += pageSum;
         }
 
         // System.out.println(sum + " " + processedRows);
@@ -45,9 +52,12 @@ public class TpchQuery6
         return getDate(shipDate, row).compareTo(MIN_SHIP_DATE) >= 0 &&
                 getDate(shipDate, row).compareTo(MAX_SHIP_DATE) < 0 &&
                 getDouble(discount, row) >= 0.05 &&
-                getDouble(discount, row) <= 0.07 &&
+                0.07 >= getDouble(discount, row) &&
                 getLong(quantity, row) < 24;
     }
+    
+    // 2.0632824238740677E8
+    // 2.0632824238740027E8
 
     private static double getDouble(Slice slice, int row)
     {
@@ -56,7 +66,7 @@ public class TpchQuery6
 
     private static long getLong(Slice slice, int row)
     {
-        return slice.getLong(row * SizeOf.SIZE_OF_DOUBLE);
+        return slice.getLong(row * SizeOf.SIZE_OF_LONG);
     }
 
     private static Slice getDate(Slice slice, int row)
