@@ -1,11 +1,9 @@
-package com.facebook.presto.truffle;
+package com.facebook.presto.truffle.nodes;
 
-import com.oracle.truffle.api.Truffle;
+import com.facebook.presto.truffle.Page;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import io.airlift.slice.Slice;
 
-import com.facebook.presto.truffle.TruffleTest.DoubleReduceNode;
-import com.facebook.presto.truffle.TruffleTest.ExpressionNode;
 import com.facebook.presto.truffle.TruffleTest.FrameMapping;
 import com.oracle.truffle.api.CompilerDirectives.SlowPath;
 import com.oracle.truffle.api.frame.FrameSlot;
